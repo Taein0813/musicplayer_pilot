@@ -3,51 +3,58 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Album Art × Music VA (Frame UI)</title>
+  <title>Album Art × Music VA</title>
 
   <!-- jsPsych v7 (CDN) -->
   <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
   <script src="https://unpkg.com/jspsych@7.3.4"></script>
+
+  <!-- plugins -->
   <script src="https://unpkg.com/@jspsych/plugin-preload@1.1.3"></script>
   <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.3"></script>
 
   <style>
     body { margin:0; background:#111; color:#eee; font-family: system-ui, -apple-system, Arial, sans-serif; }
     .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+
     .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
     .counter { font-size: 18px; opacity: .9; }
-    .status { font-size: 14px; opacity: .75; }
+    .status  { font-size: 14px; opacity: .75; }
 
     .panel { display:grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
-    .card { background:#1b1b1b; border:1px solid #2a2a2a; border-radius: 16px; padding: 18px; }
+    .card  { background:#1b1b1b; border:1px solid #2a2a2a; border-radius: 16px; padding: 18px; }
 
-    /* ===== Player Frame ===== */
+    /* ===== Frame container (music_player.png + overlay) ===== */
     .playerFrame {
       position: relative;
       width: 100%;
-      max-width: 560px; /* 원하는 최대폭 */
+      max-width: 560px;
       margin: 0 auto;
-      aspect-ratio: 9 / 16; /* music_player.png 비율이 다르면 바꿔줘도 됨 */
       border-radius: 18px;
       overflow: hidden;
       background: #000;
       border: 1px solid #2a2a2a;
+    }
 
-      /* (핵심) 프레임 이미지 */
-      background-image: url("stimuli/music_player.png");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
+    /* 프레임 이미지를 "배경"이 아니라 <img>로 넣어 로딩 문제를 눈으로 확인 가능하게 함 */
+    .frameImg {
+      width: 100%;
+      height: auto;
+      display: block;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
 
-      /* ↓↓↓ 여기 3개 숫자만 조정하면 앨범아트가 “정확히” 맞아짐 ↓↓↓
-         퍼센트 기준이라 화면 크기 바뀌어도 비율 유지됨. */
-      --art-left: 12.5%;   /* 앨범아트 박스 왼쪽 위치 */
-      --art-top: 12.0%;    /* 앨범아트 박스 위쪽 위치 */
-      --art-size: 76.0%;   /* 앨범아트 박스 가로/세로 크기(정사각형) */
+    /* ===== 여기 3개만 조정하면 앨범아트 위치/크기 딱 맞춤 =====
+       frameImg(=music_player.png) 기준 퍼센트 */
+    .playerFrame {
+      --art-left: 12.5%;
+      --art-top: 12.0%;
+      --art-size: 76.0%;
 
-      /* Play 버튼 위치도 프레임 위 버튼처럼 쓰고 싶으면 조정 */
-      --play-left: 42%;
-      --play-top: 78%;
+      --play-left: 50%;
+      --play-top: 82%;
     }
 
     .albumSlot {
@@ -56,18 +63,12 @@
       top: var(--art-top);
       width: var(--art-size);
       height: var(--art-size);
-      border-radius: 8px; /* 프레임 모서리 느낌 맞추고 싶으면 조정 */
+      border-radius: 10px;
       overflow: hidden;
       background: #000;
     }
-    .albumSlot img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
+    .albumSlot img { width:100%; height:100%; object-fit:cover; display:block; }
 
-    /* 프레임 위에 올리는 Play 버튼(원하면 숨기고 아래 버튼으로 써도 됨) */
     .playOverlay {
       position: absolute;
       left: var(--play-left);
@@ -84,21 +85,16 @@
       backdrop-filter: blur(4px);
     }
 
-    /* 아래쪽 Next 버튼은 프레임 밖에 */
     .controls { display:flex; gap: 12px; align-items:center; margin-top: 14px; justify-content:center; flex-wrap:wrap; }
     .btn-next { border:0; border-radius:999px; padding:12px 16px; font-size:16px; cursor:pointer; background:#2b6cff; color:#fff; min-width: 90px; }
     .btn-next:disabled { opacity:.45; cursor:not-allowed; }
 
     .hint { margin-top: 10px; font-size: 13px; opacity:.7; line-height: 1.4; text-align:center; }
 
-    /* 슬라이더 카드 */
     .sl { margin: 10px 0 18px; }
     .sl label { display:flex; justify-content:space-between; align-items:center; font-size:15px; margin-bottom: 8px; }
     input[type="range"] { width:100%; }
     .value { font-variant-numeric: tabular-nums; opacity:.9; }
-
-    .end { text-align:center; }
-    .end button { border:0; border-radius:999px; padding:12px 18px; font-size:16px; cursor:pointer; background:#333; color:#eee; }
 
     @media (max-width: 860px){
       .panel { grid-template-columns: 1fr; }
@@ -113,6 +109,7 @@
 <script>
 /** ===== 설정 ===== */
 const PLAY_MS = 10_000;
+const FRAME_IMG = "stimuli/music_player.png";
 const DEFAULT_ART = "stimuli/no_album.jpg";
 
 /** ===== 자극 8개 ===== */
@@ -127,17 +124,20 @@ const baseStimuli = [
   { stim_id: "sad2",      audio: "stimuli/sad2.mp3",      art: "stimuli/sad2.png" },
 ];
 
+/** 16트라이얼: 각 곡 × (art/noart) */
 function buildTrials() {
   const out = [];
   for (const s of baseStimuli) {
-    out.push({ ...s, condition: "art", show_art: true });
+    out.push({ ...s, condition: "art",   show_art: true });
     out.push({ ...s, condition: "noart", show_art: false });
   }
   return out;
 }
+
+/** shuffle + 같은 stim 연속 방지 */
 function shuffle(arr) {
   const a = [...arr];
-  for (let i=a.length-1;i>0;i--) {
+  for (let i=a.length-1;i>0;i--){
     const j = Math.floor(Math.random()*(i+1));
     [a[i],a[j]]=[a[j],a[i]];
   }
@@ -155,7 +155,7 @@ function shuffleNoAdjacentSame(arr, key="stim_id", maxTry=5000){
   return arr;
 }
 
-/** ===== Trial UI ===== */
+/** Trial HTML */
 function renderTrialHTML(t, trialIndex, totalTrials) {
   const artSrc = t.show_art ? t.art : DEFAULT_ART;
 
@@ -168,6 +168,7 @@ function renderTrialHTML(t, trialIndex, totalTrials) {
     <div class="panel">
       <div class="card">
         <div class="playerFrame">
+          <img class="frameImg" src="${FRAME_IMG}" alt="player frame" />
           <div class="albumSlot">
             <img id="artImg" src="${artSrc}" alt="album art"/>
           </div>
@@ -202,26 +203,67 @@ function renderTrialHTML(t, trialIndex, totalTrials) {
   `;
 }
 
+/** trials */
 const allTrials = shuffleNoAdjacentSame(buildTrials(), "stim_id");
 const totalTrials = allTrials.length;
 
-/** ===== Preload ===== */
-const preload = {
+/** ===== Timeline ===== */
+const timeline = [];
+
+/** (A) 참가자 정보 입력 */
+timeline.push({
+  type: jsPsychSurveyText,
+  preamble: `
+    <div class="card">
+      <h2>참가자 정보</h2>
+      <p>이름(또는 ID)을 입력하고 시작하세요.</p>
+    </div>
+  `,
+  questions: [
+    { prompt: "Participant ID / Name", name: "participant_id", required: true, placeholder: "예: P001 또는 홍길동" }
+  ],
+  on_finish: (data) => {
+    const resp = JSON.parse(data.responses);
+    const pid = (resp.participant_id || "").trim();
+    jsPsych.data.addProperties({ participant_id: pid });
+  }
+});
+
+/** (B) 안내 화면 */
+timeline.push({
+  type: jsPsychHtmlButtonResponse,
+  stimulus: `
+    <div class="card">
+      <h2>실험 안내</h2>
+      <p>각 트라이얼에서 <b>Play</b>를 누르면 음악이 <b>10초</b> 재생됩니다.</p>
+      <p>재생이 끝나면 Valence/Arousal(0–100)을 평가하고 <b>Next</b>를 누르세요.</p>
+      <p style="opacity:.8;font-size:14px;">브라우저 정책상 자동재생은 불가능해서 Play 클릭이 필요합니다.</p>
+    </div>
+  `,
+  choices: ["Start"]
+});
+
+/** (C) Preload: 에러가 있어도 진행 */
+timeline.push({
   type: jsPsychPreload,
   audio: allTrials.map(t => t.audio),
-  images: [...new Set(allTrials.map(t => t.art).concat([DEFAULT_ART, "stimuli/music_player.png"]))],
-};
+  images: [...new Set(allTrials.map(t => t.art).concat([DEFAULT_ART, FRAME_IMG]))],
+  show_progress_bar: true,
+  continue_after_error: true, // <-- 검정 화면 방지 핵심
+  on_error: (file) => {
+    console.warn("Preload failed:", file);
+  }
+});
 
-/** ===== Trial loop ===== */
-const timeline = [preload];
-
+/** (D) Trials */
 allTrials.forEach((t, i) => {
   const trialIndex = i + 1;
 
   timeline.push({
     type: jsPsychHtmlButtonResponse,
     stimulus: renderTrialHTML(t, trialIndex, totalTrials),
-    choices: [], // 우리 버튼은 커스텀으로 처리
+    choices: [],
+
     on_load: () => {
       const audio = document.getElementById("audio");
       const playBtn = document.getElementById("playBtn");
@@ -275,16 +317,13 @@ allTrials.forEach((t, i) => {
         }
       });
 
-      // next 클릭 시 trial 종료 + 데이터 저장
       nextBtn.addEventListener("click", () => {
-        // 정리
         if (timer) clearTimeout(timer);
         try { audio.pause(); audio.currentTime = 0; } catch {}
 
-        // jsPsych에 저장할 데이터
         jsPsych.data.write({
           stim_id: t.stim_id,
-          condition: t.condition,           // art / noart
+          condition: t.condition,
           audio: t.audio,
           art_shown: t.show_art ? t.art : DEFAULT_ART,
           valence: Number(v.value),
@@ -301,11 +340,11 @@ allTrials.forEach((t, i) => {
   });
 });
 
-/** ===== End + Download ===== */
+/** (E) End + Download */
 timeline.push({
   type: jsPsychHtmlButtonResponse,
   stimulus: `
-    <div class="card end">
+    <div class="card" style="text-align:center;">
       <h2>끝!</h2>
       <p>버튼을 눌러 결과(JSON)를 다운로드하세요.</p>
     </div>
