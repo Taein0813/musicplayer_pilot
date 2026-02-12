@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Album Art × Music VA</title>
+  <title>musicplayer_pilot</title>
 
   <!-- jsPsych v7 (CDN) -->
   <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
@@ -25,7 +25,7 @@
     .panel { display:grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
     .card  { background:#1b1b1b; border:1px solid #2a2a2a; border-radius: 16px; padding: 18px; }
 
-    /* ===== Frame container (music_player.png + overlay) ===== */
+    /* ===== Frame (music_player.png) + overlay ===== */
     .playerFrame {
       position: relative;
       width: 100%;
@@ -35,26 +35,23 @@
       overflow: hidden;
       background: #000;
       border: 1px solid #2a2a2a;
+
+      /* ★ 여기 3개가 앨범아트 박스 위치/크기 조정값(퍼센트) */
+      --art-left: 12.5%;
+      --art-top: 12.0%;
+      --art-size: 76.0%;
+
+      /* Play 버튼 위치(원하면 조정) */
+      --play-left: 50%;
+      --play-top: 82%;
     }
 
-    /* 프레임 이미지를 "배경"이 아니라 <img>로 넣어 로딩 문제를 눈으로 확인 가능하게 함 */
     .frameImg {
       width: 100%;
       height: auto;
       display: block;
       user-select: none;
       -webkit-user-drag: none;
-    }
-
-    /* ===== 여기 3개만 조정하면 앨범아트 위치/크기 딱 맞춤 =====
-       frameImg(=music_player.png) 기준 퍼센트 */
-    .playerFrame {
-      --art-left: 12.5%;
-      --art-top: 12.0%;
-      --art-size: 76.0%;
-
-      --play-left: 50%;
-      --play-top: 82%;
     }
 
     .albumSlot {
@@ -96,6 +93,8 @@
     input[type="range"] { width:100%; }
     .value { font-variant-numeric: tabular-nums; opacity:.9; }
 
+    .small { font-size: 13px; opacity: .75; }
+
     @media (max-width: 860px){
       .panel { grid-template-columns: 1fr; }
       .playerFrame { max-width: 420px; }
@@ -107,12 +106,22 @@
   <div class="wrap" id="jspsych-target"></div>
 
 <script>
-/** ===== 설정 ===== */
+/** =========================
+ * 0) Google Apps Script Web App (너가 준 URL)
+ * ========================= */
+const GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbx15kYuTQuzEXWxZnghgcGFXiYIDdUJq_LnQ-iXUmwAUZE5Jpy_gcvBMfqsnhQH4ZNN/exec";
+
+/** =========================
+ * 1) 설정 / 파일 경로(네 repo 파일명과 일치)
+ * ========================= */
 const PLAY_MS = 10_000;
 const FRAME_IMG = "stimuli/music_player.png";
 const DEFAULT_ART = "stimuli/no_album.jpg";
 
-/** ===== 자극 8개 ===== */
+/** =========================
+ * 2) 자극 8개 (파일명 정확히)
+ * ========================= */
 const baseStimuli = [
   { stim_id: "cheerful1", audio: "stimuli/cheerful1.mp3", art: "stimuli/cheerful1.png" },
   { stim_id: "cheerful2", audio: "stimuli/cheerful2.mp3", art: "stimuli/cheerful2.png" },
@@ -128,13 +137,13 @@ const baseStimuli = [
 function buildTrials() {
   const out = [];
   for (const s of baseStimuli) {
-    out.push({ ...s, condition: "art",   show_art: true });
+    out.push({ ...s, condition: "art",   show_art: true  });
     out.push({ ...s, condition: "noart", show_art: false });
   }
   return out;
 }
 
-/** shuffle + 같은 stim 연속 방지 */
+/** Shuffle + 같은 stim_id 연속 방지 */
 function shuffle(arr) {
   const a = [...arr];
   for (let i=a.length-1;i>0;i--){
@@ -155,7 +164,57 @@ function shuffleNoAdjacentSame(arr, key="stim_id", maxTry=5000){
   return arr;
 }
 
-/** Trial HTML */
+/** =========================
+ * 3) 서버 전송: Google Apps Script로 POST
+ * - 실패 시 localStorage에 큐로 저장하고 다음번에 재시도
+ * ========================= */
+const QUEUE_KEY = "unsent_responses_v1";
+
+function loadQueue() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); }
+  catch { return []; }
+}
+function saveQueue(q) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+}
+
+async function postToGoogleSheet(payload) {
+  // Apps Script가 CORS 허용해야 함 (서버에서 Access-Control-Allow-Origin: * 등)
+  const res = await fetch(GOOGLE_SCRIPT_URL, {
+    method: "POST",
+    mode: "cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  // Apps Script가 text로 응답할 수도 있어서 안전하게 처리
+  const text = await res.text();
+  if (!res.ok) throw new Error("POST failed: " + res.status + " " + text);
+  return text;
+}
+
+async function flushQueue() {
+  const q = loadQueue();
+  if (!q.length) return { sent: 0, left: 0 };
+
+  const remain = [];
+  let sent = 0;
+
+  for (const item of q) {
+    try {
+      await postToGoogleSheet(item);
+      sent += 1;
+    } catch (e) {
+      // 아직 안 되면 남겨둠
+      remain.push(item);
+    }
+  }
+  saveQueue(remain);
+  return { sent, left: remain.length };
+}
+
+/** =========================
+ * 4) Trial HTML (music_player.png 프레임 위에 앨범아트)
+ * ========================= */
 function renderTrialHTML(t, trialIndex, totalTrials) {
   const artSrc = t.show_art ? t.art : DEFAULT_ART;
 
@@ -187,6 +246,8 @@ function renderTrialHTML(t, trialIndex, totalTrials) {
           • Play를 누르면 10초 재생 후 자동으로 멈춥니다.<br/>
           • 재생이 1회 이상 완료되어야 Next가 활성화됩니다.
         </div>
+
+        <div class="hint small" id="netHint"></div>
       </div>
 
       <div class="card">
@@ -203,56 +264,59 @@ function renderTrialHTML(t, trialIndex, totalTrials) {
   `;
 }
 
-/** trials */
+/** =========================
+ * 5) jsPsych timeline
+ * ========================= */
 const allTrials = shuffleNoAdjacentSame(buildTrials(), "stim_id");
 const totalTrials = allTrials.length;
 
-/** ===== Timeline ===== */
 const timeline = [];
 
-/** (A) 참가자 정보 입력 */
+/** (A) 참가자 ID/이름 입력 */
 timeline.push({
   type: jsPsychSurveyText,
   preamble: `
     <div class="card">
       <h2>참가자 정보</h2>
-      <p>이름(또는 ID)을 입력하고 시작하세요.</p>
+      <p>ID/이름을 입력하고 시작하세요.</p>
+      <p class="small">※ 데이터는 입력한 ID와 함께 Google Sheet로 저장됩니다.</p>
     </div>
   `,
   questions: [
-    { prompt: "Participant ID / Name", name: "participant_id", required: true, placeholder: "예: P001 또는 홍길동" }
+    { prompt: "Participant ID / Name", name: "participant_id", required: true, placeholder: "예: P001" }
   ],
-  on_finish: (data) => {
+  on_finish: async (data) => {
     const resp = JSON.parse(data.responses);
     const pid = (resp.participant_id || "").trim();
     jsPsych.data.addProperties({ participant_id: pid });
+
+    // 이전에 실패한 전송이 있으면 여기서 먼저 밀어넣기
+    try { await flushQueue(); } catch {}
   }
 });
 
-/** (B) 안내 화면 */
+/** (B) 안내 */
 timeline.push({
   type: jsPsychHtmlButtonResponse,
   stimulus: `
     <div class="card">
-      <h2>실험 안내</h2>
+      <h2>안내</h2>
       <p>각 트라이얼에서 <b>Play</b>를 누르면 음악이 <b>10초</b> 재생됩니다.</p>
       <p>재생이 끝나면 Valence/Arousal(0–100)을 평가하고 <b>Next</b>를 누르세요.</p>
-      <p style="opacity:.8;font-size:14px;">브라우저 정책상 자동재생은 불가능해서 Play 클릭이 필요합니다.</p>
+      <p class="small">브라우저 정책상 자동재생은 불가능해서 Play 클릭이 필요합니다.</p>
     </div>
   `,
   choices: ["Start"]
 });
 
-/** (C) Preload: 에러가 있어도 진행 */
+/** (C) Preload (검은 화면 방지 옵션 포함) */
 timeline.push({
   type: jsPsychPreload,
   audio: allTrials.map(t => t.audio),
   images: [...new Set(allTrials.map(t => t.art).concat([DEFAULT_ART, FRAME_IMG]))],
   show_progress_bar: true,
-  continue_after_error: true, // <-- 검정 화면 방지 핵심
-  on_error: (file) => {
-    console.warn("Preload failed:", file);
-  }
+  continue_after_error: true,
+  on_error: (file) => console.warn("Preload failed:", file),
 });
 
 /** (D) Trials */
@@ -270,6 +334,7 @@ allTrials.forEach((t, i) => {
       const nextBtn = document.getElementById("nextBtn");
       const statusEl = document.getElementById("status");
       const hintEl = document.getElementById("hint");
+      const netHint = document.getElementById("netHint");
 
       const v = document.getElementById("valence");
       const a = document.getElementById("arousal");
@@ -317,22 +382,45 @@ allTrials.forEach((t, i) => {
         }
       });
 
-      nextBtn.addEventListener("click", () => {
+      nextBtn.addEventListener("click", async () => {
         if (timer) clearTimeout(timer);
         try { audio.pause(); audio.currentTime = 0; } catch {}
 
-        jsPsych.data.write({
+        const participant_id = jsPsych.data.get().values()[0]?.participant_id || jsPsych.data.get().select("participant_id").values[0] || "";
+        const payload = {
+          participant_id,
+          trial_index: trialIndex,
+          total_trials: totalTrials,
           stim_id: t.stim_id,
-          condition: t.condition,
+          condition: t.condition,                // art / noart
           audio: t.audio,
           art_shown: t.show_art ? t.art : DEFAULT_ART,
           valence: Number(v.value),
           arousal: Number(a.value),
           played_once: playedOnce,
-          trial_index: trialIndex,
-          total_trials: totalTrials,
-          timestamp: new Date().toISOString()
-        });
+          client_timestamp: new Date().toISOString(),
+          user_agent: navigator.userAgent
+        };
+
+        // jsPsych에도 저장
+        jsPsych.data.write(payload);
+
+        // (중요) 전송: 실패하면 큐에 저장
+        netHint.textContent = "저장 중...";
+        try {
+          // 먼저 큐 남아있으면 시도
+          await flushQueue();
+
+          // 이번 응답 전송
+          await postToGoogleSheet(payload);
+          netHint.textContent = "✅ Google Sheet 저장 완료";
+        } catch (e) {
+          console.warn("Send failed, queued:", e);
+          const q = loadQueue();
+          q.push(payload);
+          saveQueue(q);
+          netHint.textContent = "⚠️ 네트워크/권한 문제로 임시 저장됨(후에 자동 재전송 시도)";
+        }
 
         jsPsych.finishTrial();
       });
@@ -340,17 +428,20 @@ allTrials.forEach((t, i) => {
   });
 });
 
-/** (E) End + Download */
+/** (E) End */
 timeline.push({
   type: jsPsychHtmlButtonResponse,
   stimulus: `
     <div class="card" style="text-align:center;">
       <h2>끝!</h2>
-      <p>버튼을 눌러 결과(JSON)를 다운로드하세요.</p>
+      <p>응답 전송을 한 번 더 시도합니다. (네트워크가 불안정했다면 여기서 올라갈 수 있어요)</p>
+      <p class="small">원하면 JSON도 다운로드할 수 있습니다.</p>
     </div>
   `,
-  choices: ["Download JSON"],
-  on_finish: () => {
+  choices: ["Finish & Download JSON"],
+  on_finish: async () => {
+    try { await flushQueue(); } catch {}
+
     const json = jsPsych.data.get().json();
     const blob = new Blob([json], {type:"application/json"});
     const url = URL.createObjectURL(blob);
