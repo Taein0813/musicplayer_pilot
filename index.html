@@ -5,17 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>musicplayer_pilot</title>
 
-  <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
-  <script src="https://unpkg.com/jspsych@7.3.4"></script>
-  <script src="https://unpkg.com/@jspsych/plugin-preload@1.1.3"></script>
-  <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3"></script>
-  <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.3"></script>
-
   <style>
     body { margin:0; background:#111; color:#eee; font-family: system-ui, -apple-system, Arial, sans-serif; }
     .wrap { max-width: 980px; margin: 0 auto; padding: 16px 24px 24px; }
 
-    /* DEBUG BOX */
+    /* DEBUG */
     .debugBox{
       background:#0d1b2a;
       border:1px solid #1b3a57;
@@ -28,15 +22,16 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .debugTitle{ font-weight:700; margin-bottom:6px; }
 
+    .card  { background:#1b1b1b; border:1px solid #2a2a2a; border-radius: 16px; padding: 18px; }
     .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
     .counter { font-size: 18px; opacity: .9; }
     .status  { font-size: 14px; opacity: .75; }
 
     .panel { display:grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
-    .card  { background:#1b1b1b; border:1px solid #2a2a2a; border-radius: 16px; padding: 18px; }
+    .small { font-size: 13px; opacity: .75; }
 
+    /* ===== Frame + overlay ===== */
     .playerFrame {
       position: relative;
       width: 100%;
@@ -47,6 +42,7 @@
       background: #000;
       border: 1px solid #2a2a2a;
 
+      /* ★ 여기 3개 조절하면 앨범아트 위치/크기 정확히 맞음 */
       --art-left: 12.5%;
       --art-top: 12.0%;
       --art-size: 76.0%;
@@ -54,9 +50,7 @@
       --play-left: 50%;
       --play-top: 82%;
     }
-
     .frameImg { width: 100%; height: auto; display:block; user-select:none; -webkit-user-drag:none; }
-
     .albumSlot {
       position: absolute;
       left: var(--art-left);
@@ -68,7 +62,6 @@
       background: #000;
     }
     .albumSlot img { width:100%; height:100%; object-fit:cover; display:block; }
-
     .playOverlay {
       position: absolute;
       left: var(--play-left);
@@ -86,16 +79,22 @@
     }
 
     .controls { display:flex; gap: 12px; align-items:center; margin-top: 14px; justify-content:center; flex-wrap:wrap; }
-    .btn-next { border:0; border-radius:999px; padding:12px 16px; font-size:16px; cursor:pointer; background:#2b6cff; color:#fff; min-width: 90px; }
-    .btn-next:disabled { opacity:.45; cursor:not-allowed; }
+    .btn { border:0; border-radius:999px; padding:12px 16px; font-size:16px; cursor:pointer; }
+    .btn-primary { background:#2b6cff; color:#fff; min-width: 90px; }
+    .btn-white { background:#fff; color:#111; min-width: 110px; }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
 
     .hint { margin-top: 10px; font-size: 13px; opacity:.7; line-height: 1.4; text-align:center; }
-    .small { font-size: 13px; opacity: .75; }
 
+    /* sliders */
     .sl { margin: 10px 0 18px; }
     .sl label { display:flex; justify-content:space-between; align-items:center; font-size:15px; margin-bottom: 8px; }
     input[type="range"] { width:100%; }
     .value { font-variant-numeric: tabular-nums; opacity:.9; }
+
+    /* screens */
+    .screen { display:none; }
+    .screen.active { display:block; }
 
     @media (max-width: 860px){
       .panel { grid-template-columns: 1fr; }
@@ -105,35 +104,97 @@
 </head>
 
 <body>
-  <div class="wrap" id="jspsych-target">
-    <div class="debugBox" id="debugBox">
-      <div class="debugTitle">DEBUG</div>
-      Loading…
+  <div class="wrap">
+    <div class="debugBox" id="debugBox">DEBUG\nLoading…</div>
+
+    <!-- START -->
+    <div class="screen active" id="screenStart">
+      <div class="card">
+        <h2 style="margin-top:0;">참가자 정보</h2>
+        <p>ID/이름을 입력하고 시작하세요.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <input id="pid" type="text" placeholder="예: P001" style="padding:10px 12px;border-radius:10px;border:1px solid #333;background:#111;color:#eee;min-width:220px;">
+          <button class="btn btn-primary" id="btnStart">Start</button>
+        </div>
+        <p class="small">※ 입력한 ID와 함께 Google Sheet로 저장됩니다.</p>
+      </div>
+    </div>
+
+    <!-- INSTRUCTIONS -->
+    <div class="screen" id="screenInst">
+      <div class="card">
+        <h2 style="margin-top:0;">안내</h2>
+        <p>각 트라이얼에서 <b>Play</b>를 누르면 음악이 <b>10초</b> 재생됩니다.</p>
+        <p>재생이 끝나면 Valence/Arousal(0–100)을 평가하고 <b>Next</b>를 누르세요.</p>
+        <p class="small">브라우저 정책상 자동재생은 불가능해서 Play 클릭이 필요합니다.</p>
+        <button class="btn btn-primary" id="btnGo">Go</button>
+      </div>
+    </div>
+
+    <!-- TRIAL -->
+    <div class="screen" id="screenTrial">
+      <div class="topbar">
+        <div class="counter" id="counter">1/16</div>
+        <div class="status" id="status">준비됨</div>
+      </div>
+
+      <div class="panel">
+        <div class="card">
+          <div class="playerFrame">
+            <img class="frameImg" id="frameImg" src="" alt="player frame" />
+            <div class="albumSlot">
+              <img id="artImg" src="" alt="album art"/>
+            </div>
+            <button class="playOverlay btn-white" id="playBtn">Play</button>
+
+            <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
+          </div>
+
+          <div class="controls">
+            <button class="btn btn-primary" id="nextBtn" disabled>Next</button>
+          </div>
+
+          <div class="hint" id="hint">
+            • Play를 누르면 10초 재생 후 자동으로 멈춥니다.<br/>
+            • 재생이 1회 이상 완료되어야 Next가 활성화됩니다.
+          </div>
+          <div class="hint small" id="netHint"></div>
+        </div>
+
+        <div class="card">
+          <div class="sl">
+            <label><span>Valence (0–100)</span><span class="value" id="valTxt">50</span></label>
+            <input id="valence" type="range" min="0" max="100" step="1" value="50" />
+          </div>
+          <div class="sl">
+            <label><span>Arousal (0–100)</span><span class="value" id="aroTxt">50</span></label>
+            <input id="arousal" type="range" min="0" max="100" step="1" value="50" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- END -->
+    <div class="screen" id="screenEnd">
+      <div class="card" style="text-align:center;">
+        <h2 style="margin-top:0;">끝!</h2>
+        <p>마지막으로 미전송 데이터가 있으면 재전송을 시도했습니다.</p>
+        <button class="btn btn-primary" id="btnDownload">Download JSON</button>
+      </div>
     </div>
   </div>
 
 <script>
-/** ===== Google Script URL ===== */
+/** =========================
+ * 0) 설정 (너 URL)
+ * ========================= */
 const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbx15kYuTQuzEXWxZnghgcGFXiYIDdUJq_LnQ-iXUmwAUZE5Jpy_gcvBMfqsnhQH4ZNN/exec";
 
-/** ===== paths ===== */
 const PLAY_MS = 10_000;
 const FRAME_IMG = "stimuli/music_player.png";
 const DEFAULT_ART = "stimuli/no_album.jpg";
 
-/** ===== DEBUG helpers ===== */
-const dbgEl = document.getElementById("debugBox");
-let dbgLines = [];
-function dbg(msg){
-  dbgLines.push(msg);
-  if(dbgLines.length > 40) dbgLines = dbgLines.slice(-40);
-  dbgEl.textContent = "DEBUG\n" + dbgLines.join("\n");
-}
-window.addEventListener("error", (e) => dbg("❌ window.error: " + (e.message || e.type)));
-window.addEventListener("unhandledrejection", (e) => dbg("❌ unhandledrejection: " + (e.reason?.message || e.reason)));
-
-/** ===== stimuli ===== */
 const baseStimuli = [
   { stim_id: "cheerful1", audio: "stimuli/cheerful1.mp3", art: "stimuli/cheerful1.png" },
   { stim_id: "cheerful2", audio: "stimuli/cheerful2.mp3", art: "stimuli/cheerful2.png" },
@@ -145,6 +206,39 @@ const baseStimuli = [
   { stim_id: "sad2",      audio: "stimuli/sad2.mp3",      art: "stimuli/sad2.png" },
 ];
 
+/** =========================
+ * 1) DEBUG
+ * ========================= */
+const dbgEl = document.getElementById("debugBox");
+let dbgLines = [];
+function dbg(msg){
+  dbgLines.push(msg);
+  if(dbgLines.length > 60) dbgLines = dbgLines.slice(-60);
+  dbgEl.textContent = "DEBUG\n" + dbgLines.join("\n");
+}
+window.addEventListener("error", (e) => dbg("❌ window.error: " + (e.message || e.type)));
+window.addEventListener("unhandledrejection", (e) => dbg("❌ unhandledrejection: " + (e.reason?.message || e.reason)));
+
+/** quick file check */
+async function check(url){
+  try{
+    const r = await fetch(url, { method:"GET", cache:"no-store" });
+    dbg(`${r.ok ? "✅" : "❌"} ${url} (${r.status})`);
+  } catch(e){
+    dbg(`❌ ${url} (ERR)`);
+  }
+}
+(async () => {
+  dbg("🔎 checking key files…");
+  await check(FRAME_IMG);
+  await check(DEFAULT_ART);
+  await check("stimuli/cheerful1.mp3");
+  await check("stimuli/cheerful1.png");
+})();
+
+/** =========================
+ * 2) Trials 만들기 + 같은 곡 연속 방지
+ * ========================= */
 function buildTrials(){
   const out=[];
   for(const s of baseStimuli){
@@ -163,288 +257,256 @@ function shuffle(arr){
 }
 function shuffleNoAdjacentSame(arr, key="stim_id", maxTry=5000){
   for(let t=0;t<maxTry;t++){
-    const cand=shuffle(arr);
+    const cand = shuffle(arr);
     let ok=true;
     for(let i=1;i<cand.length;i++){
-      if(cand[i][key]===cand[i-1][key]){ ok=false; break; }
+      if(cand[i][key]===cand[i-1][key]) { ok=false; break; }
     }
     if(ok) return cand;
   }
   return arr;
 }
 
-/** ===== Network send ===== */
-const QUEUE_KEY = "unsent_responses_v1";
-function loadQueue(){ try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); }catch{ return []; } }
+const trials = shuffleNoAdjacentSame(buildTrials(), "stim_id");
+
+/** =========================
+ * 3) Google Sheet 전송 (POST -> 실패시 GET fallback)
+ * ========================= */
+const QUEUE_KEY = "unsent_responses_v2";
+function loadQueue(){ try { return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); } catch { return []; } }
 function saveQueue(q){ localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
 
-async function postToGoogleSheet(payload){
-  // 일부 Apps Script는 CORS/POST를 막는 경우가 있어, 실패하면 화면에 메시지 찍기
+async function sendPOST(payload){
   const res = await fetch(GOOGLE_SCRIPT_URL, {
     method:"POST",
     mode:"cors",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
   const text = await res.text();
   if(!res.ok) throw new Error(`POST ${res.status}: ${text}`);
   return text;
 }
 
+// doGet만 있는 스크립트도 많아서 GET도 같이 지원
+async function sendGET(payload){
+  const url = new URL(GOOGLE_SCRIPT_URL);
+  Object.entries(payload).forEach(([k,v]) => url.searchParams.set(k, String(v)));
+  // CORS 회피용: no-cors로 보내면 응답은 못 읽지만 전송은 됨(서버가 허용하면)
+  await fetch(url.toString(), { method:"GET", mode:"no-cors" });
+  return "GET sent (no-cors)";
+}
+
+async function sendToSheet(payload){
+  try{
+    const r = await sendPOST(payload);
+    return { ok:true, via:"POST", resp:r };
+  } catch(e){
+    dbg("⚠️ POST failed -> try GET: " + (e.message||e));
+    try{
+      const r2 = await sendGET(payload);
+      return { ok:true, via:"GET", resp:r2 };
+    } catch(e2){
+      return { ok:false, via:"NONE", resp:(e2.message||e2) };
+    }
+  }
+}
+
 async function flushQueue(){
-  const q=loadQueue();
-  if(!q.length) return;
+  const q = loadQueue();
+  if(!q.length) return { sent:0, left:0 };
   dbg(`📦 queue flush start: ${q.length}`);
   const remain=[];
   let sent=0;
   for(const item of q){
-    try{ await postToGoogleSheet(item); sent++; }
-    catch(e){ remain.push(item); }
+    const r = await sendToSheet(item);
+    if(r.ok) sent++; else remain.push(item);
   }
   saveQueue(remain);
   dbg(`📦 queue flush done: sent=${sent}, left=${remain.length}`);
+  return { sent, left:remain.length };
 }
 
-/** ===== Quick file checks (no F12 needed) ===== */
-async function headCheck(url){
+/** =========================
+ * 4) 화면 제어
+ * ========================= */
+const S = {
+  start: document.getElementById("screenStart"),
+  inst: document.getElementById("screenInst"),
+  trial: document.getElementById("screenTrial"),
+  end: document.getElementById("screenEnd"),
+};
+function show(screen){
+  Object.values(S).forEach(el => el.classList.remove("active"));
+  screen.classList.add("active");
+}
+
+let participant_id = "";
+let trialIndex = 0;
+const results = [];
+
+document.getElementById("btnStart").addEventListener("click", async () => {
+  const pid = (document.getElementById("pid").value || "").trim();
+  if(!pid){ alert("ID/이름을 입력해줘."); return; }
+  participant_id = pid;
+  dbg("👤 participant_id=" + participant_id);
+  try { await flushQueue(); } catch {}
+  show(S.inst);
+});
+
+document.getElementById("btnGo").addEventListener("click", () => {
+  trialIndex = 0;
+  loadTrial(trialIndex);
+  show(S.trial);
+});
+
+/** =========================
+ * 5) Trial 동작
+ * ========================= */
+const counterEl = document.getElementById("counter");
+const statusEl  = document.getElementById("status");
+const hintEl    = document.getElementById("hint");
+const netHintEl = document.getElementById("netHint");
+
+const frameImg = document.getElementById("frameImg");
+const artImg   = document.getElementById("artImg");
+const audioEl  = document.getElementById("audio");
+const playBtn  = document.getElementById("playBtn");
+const nextBtn  = document.getElementById("nextBtn");
+
+const valenceEl = document.getElementById("valence");
+const arousalEl = document.getElementById("arousal");
+const valTxt = document.getElementById("valTxt");
+const aroTxt = document.getElementById("aroTxt");
+
+function syncSlider(){
+  valTxt.textContent = valenceEl.value;
+  aroTxt.textContent = arousalEl.value;
+}
+valenceEl.addEventListener("input", syncSlider);
+arousalEl.addEventListener("input", syncSlider);
+
+let timer = null;
+let playedOnce = false;
+
+function loadTrial(i){
+  const t = trials[i];
+  counterEl.textContent = `${i+1}/${trials.length}`;
+  statusEl.textContent = "준비됨";
+  netHintEl.textContent = "";
+  hintEl.innerHTML = "• Play를 누르면 10초 재생 후 자동으로 멈춥니다.<br/>• 재생이 1회 이상 완료되어야 Next가 활성화됩니다.";
+
+  frameImg.src = FRAME_IMG;
+  artImg.src = t.show_art ? t.art : DEFAULT_ART;
+
+  // reset audio
+  if(timer) clearTimeout(timer);
+  timer = null;
+  playedOnce = false;
+  nextBtn.disabled = true;
+  playBtn.textContent = "Play";
+  try { audioEl.pause(); audioEl.currentTime = 0; } catch {}
+  audioEl.src = t.audio;
+  audioEl.load();
+
+  // reset sliders
+  valenceEl.value = 50;
+  arousalEl.value = 50;
+  syncSlider();
+
+  dbg(`🎧 trial ${i+1}: ${t.stim_id} / ${t.condition}`);
+}
+
+function enableNext(){
+  playedOnce = true;
+  nextBtn.disabled = false;
+  hintEl.textContent = "이제 Next를 누를 수 있습니다.";
+}
+
+playBtn.addEventListener("click", async () => {
   try{
-    const r = await fetch(url, { method:"GET", cache:"no-store" });
-    return { ok:r.ok, status:r.status };
-  } catch(e){
-    return { ok:false, status:"ERR" };
-  }
-}
-(async () => {
-  dbg("🔎 checking key files…");
-  const checks = [
-    FRAME_IMG, DEFAULT_ART,
-    "stimuli/cheerful1.mp3", "stimuli/cheerful1.png"
-  ];
-  for(const u of checks){
-    const res = await headCheck(u);
-    dbg(`${res.ok ? "✅" : "❌"} ${u} (${res.status})`);
-  }
-  dbg("If you see ❌ 404 above, file/path mismatch is the cause.");
-})();
+    if(audioEl.paused){
+      await audioEl.play();
+      statusEl.textContent = "재생 중 (10초)";
+      playBtn.textContent = "Pause";
 
-/** ===== Trial HTML ===== */
-function renderTrialHTML(t, trialIndex, totalTrials){
-  const artSrc = t.show_art ? t.art : DEFAULT_ART;
-  return `
-    <div class="topbar">
-      <div class="counter">${trialIndex}/${totalTrials}</div>
-      <div class="status" id="status">준비됨</div>
-    </div>
-
-    <div class="panel">
-      <div class="card">
-        <div class="playerFrame">
-          <img class="frameImg" src="${FRAME_IMG}" alt="player frame" />
-          <div class="albumSlot">
-            <img id="artImg" src="${artSrc}" alt="album art"/>
-          </div>
-          <button class="playOverlay" id="playBtn">Play</button>
-
-          <audio id="audio" preload="auto" crossorigin="anonymous">
-            <source src="${t.audio}" type="audio/mpeg" />
-          </audio>
-        </div>
-
-        <div class="controls">
-          <button class="btn-next" id="nextBtn" disabled>Next</button>
-        </div>
-        <div class="hint" id="hint">
-          • Play를 누르면 10초 재생 후 자동으로 멈춥니다.<br/>
-          • 재생이 1회 이상 완료되어야 Next가 활성화됩니다.
-        </div>
-        <div class="hint small" id="netHint"></div>
-      </div>
-
-      <div class="card">
-        <div class="sl">
-          <label><span>Valence (0–100)</span><span class="value" id="valTxt">50</span></label>
-          <input id="valence" type="range" min="0" max="100" step="1" value="50" />
-        </div>
-        <div class="sl">
-          <label><span>Arousal (0–100)</span><span class="value" id="aroTxt">50</span></label>
-          <input id="arousal" type="range" min="0" max="100" step="1" value="50" />
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-/** ===== jsPsych timeline ===== */
-const allTrials = shuffleNoAdjacentSame(buildTrials(), "stim_id");
-const totalTrials = allTrials.length;
-const timeline = [];
-
-/* participant */
-timeline.push({
-  type: jsPsychSurveyText,
-  preamble: `
-    <div class="card">
-      <h2>참가자 정보</h2>
-      <p>ID/이름을 입력하고 시작하세요.</p>
-    </div>
-  `,
-  questions: [{ prompt:"Participant ID / Name", name:"participant_id", required:true }],
-  on_finish: async (data) => {
-    const resp = JSON.parse(data.responses);
-    const pid = (resp.participant_id||"").trim();
-    jsPsych.data.addProperties({ participant_id: pid });
-    dbg("👤 participant_id=" + pid);
-    try { await flushQueue(); } catch {}
-  }
-});
-
-/* instructions */
-timeline.push({
-  type: jsPsychHtmlButtonResponse,
-  stimulus: `
-    <div class="card">
-      <h2>안내</h2>
-      <p>Play를 누르면 10초 재생됩니다. 재생 후 VA를 평가하고 Next를 누르세요.</p>
-      <p class="small">자동재생은 불가해서 Play 클릭이 필요합니다.</p>
-    </div>
-  `,
-  choices: ["Start"]
-});
-
-/* preload (don’t block) */
-timeline.push({
-  type: jsPsychPreload,
-  audio: allTrials.map(t => t.audio),
-  images: [...new Set(allTrials.map(t => t.art).concat([DEFAULT_ART, FRAME_IMG]))],
-  show_progress_bar: true,
-  continue_after_error: true,
-  on_error: (file) => dbg("⚠️ preload failed: " + file),
-});
-
-allTrials.forEach((t, i) => {
-  const trialIndex = i+1;
-
-  timeline.push({
-    type: jsPsychHtmlButtonResponse,
-    stimulus: renderTrialHTML(t, trialIndex, totalTrials),
-    choices: [],
-    on_load: () => {
-      const audio = document.getElementById("audio");
-      const playBtn = document.getElementById("playBtn");
-      const nextBtn = document.getElementById("nextBtn");
-      const statusEl = document.getElementById("status");
-      const hintEl = document.getElementById("hint");
-      const netHint = document.getElementById("netHint");
-
-      const v = document.getElementById("valence");
-      const a = document.getElementById("arousal");
-      const vTxt = document.getElementById("valTxt");
-      const aTxt = document.getElementById("aroTxt");
-      const sync = () => { vTxt.textContent=v.value; aTxt.textContent=a.value; };
-      v.addEventListener("input", sync);
-      a.addEventListener("input", sync);
-      sync();
-
-      let timer=null;
-      let playedOnce=false;
-
-      const enableNext = () => {
-        playedOnce=true;
-        nextBtn.disabled=false;
-        hintEl.textContent="이제 Next를 누를 수 있습니다.";
-      };
-
-      playBtn.addEventListener("click", async () => {
-        try{
-          if(audio.paused){
-            await audio.play();
-            statusEl.textContent="재생 중 (10초)";
-            playBtn.textContent="Pause";
-
-            if(timer) clearTimeout(timer);
-            timer=setTimeout(() => {
-              audio.pause();
-              audio.currentTime=0;
-              statusEl.textContent="재생 완료";
-              playBtn.textContent="Play";
-              enableNext();
-            }, PLAY_MS);
-          } else {
-            audio.pause();
-            statusEl.textContent="일시정지";
-            playBtn.textContent="Play";
-          }
-        } catch(e){
-          dbg("❌ audio play error: " + e.message);
-          statusEl.textContent="재생 실패(호스팅/파일 확인)";
-        }
-      });
-
-      nextBtn.addEventListener("click", async () => {
-        if(timer) clearTimeout(timer);
-        try{ audio.pause(); audio.currentTime=0; }catch{}
-
-        const participant_id = jsPsych.data.get().select("participant_id").values[0] || "";
-        const payload = {
-          participant_id,
-          trial_index: trialIndex,
-          total_trials: totalTrials,
-          stim_id: t.stim_id,
-          condition: t.condition,
-          audio: t.audio,
-          art_shown: t.show_art ? t.art : DEFAULT_ART,
-          valence: Number(v.value),
-          arousal: Number(a.value),
-          played_once: playedOnce,
-          client_timestamp: new Date().toISOString(),
-          user_agent: navigator.userAgent
-        };
-
-        jsPsych.data.write(payload);
-
-        netHint.textContent="저장 중...";
-        try{
-          await flushQueue();
-          await postToGoogleSheet(payload);
-          netHint.textContent="✅ Google Sheet 저장 완료";
-          dbg(`✅ sent trial ${trialIndex} (${t.stim_id}/${t.condition})`);
-        } catch(e){
-          const q=loadQueue(); q.push(payload); saveQueue(q);
-          netHint.textContent="⚠️ 전송 실패 → 임시 저장(나중에 재전송)";
-          dbg("⚠️ send failed (queued): " + (e.message || e));
-        }
-
-        jsPsych.finishTrial();
-      });
+      if(timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        try { audioEl.pause(); audioEl.currentTime = 0; } catch {}
+        statusEl.textContent = "재생 완료";
+        playBtn.textContent = "Play";
+        enableNext();
+      }, PLAY_MS);
+    } else {
+      audioEl.pause();
+      statusEl.textContent = "일시정지";
+      playBtn.textContent = "Play";
     }
-  });
-});
-
-timeline.push({
-  type: jsPsychHtmlButtonResponse,
-  stimulus: `
-    <div class="card" style="text-align:center;">
-      <h2>끝!</h2>
-      <p>마지막으로 미전송 데이터가 있으면 재전송 시도합니다.</p>
-    </div>
-  `,
-  choices: ["Finish & Download JSON"],
-  on_finish: async () => {
-    try { await flushQueue(); } catch {}
-    const json = jsPsych.data.get().json();
-    const blob = new Blob([json], {type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href=url; a.download="va_data.json"; a.click();
-    URL.revokeObjectURL(url);
+  } catch(e){
+    dbg("❌ audio play error: " + (e.message||e));
+    statusEl.textContent = "재생 실패(호스팅/파일 확인)";
   }
 });
 
-dbg("✅ jsPsych init starting…");
-jsPsych.init({
-  display_element: "jspsych-target",
-  timeline
+nextBtn.addEventListener("click", async () => {
+  const t = trials[trialIndex];
+
+  if(timer) clearTimeout(timer);
+  timer = null;
+  try { audioEl.pause(); audioEl.currentTime = 0; } catch {}
+
+  const payload = {
+    participant_id,
+    trial_index: trialIndex + 1,
+    total_trials: trials.length,
+    stim_id: t.stim_id,
+    condition: t.condition,
+    audio: t.audio,
+    art_shown: (t.show_art ? t.art : DEFAULT_ART),
+    valence: Number(valenceEl.value),
+    arousal: Number(arousalEl.value),
+    played_once: playedOnce,
+    client_timestamp: new Date().toISOString(),
+    user_agent: navigator.userAgent
+  };
+
+  results.push(payload);
+
+  netHintEl.textContent = "저장 중…";
+  const r = await sendToSheet(payload);
+  if(r.ok){
+    netHintEl.textContent = `✅ 저장 완료 (${r.via})`;
+    dbg(`✅ sent (${r.via}) trial ${trialIndex+1}`);
+    // 혹시 이전 큐가 남아있으면 한번 더 flush
+    try { await flushQueue(); } catch {}
+  } else {
+    const q = loadQueue(); q.push(payload); saveQueue(q);
+    netHintEl.textContent = "⚠️ 전송 실패 → 임시 저장(나중에 재전송)";
+    dbg("⚠️ send failed queued: " + r.resp);
+  }
+
+  trialIndex += 1;
+  if(trialIndex >= trials.length){
+    dbg("🏁 end reached. flushing queue…");
+    try { await flushQueue(); } catch {}
+    show(S.end);
+    return;
+  }
+  loadTrial(trialIndex);
 });
+
+document.getElementById("btnDownload").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(results, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "va_data.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+/** init */
+dbg("✅ vanilla experiment loaded (no jsPsych).");
 </script>
 </body>
 </html>
