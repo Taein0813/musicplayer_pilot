@@ -9,36 +9,31 @@
     body { margin:0; background:#111; color:#eee; font-family: system-ui, -apple-system, Arial, sans-serif; }
     .wrap { max-width: 900px; margin: 0 auto; padding: 16px 24px 24px; }
 
-    /* DEBUG - 숨김 처리 */
-    .debugBox { display: none; background:#0d1b2a; border:1px solid #1b3a57; border-radius:12px; padding:10px 12px; margin: 10px 0 14px; font-size: 12.5px; color:#cfe7ff; white-space: pre-wrap; }
+    .debugBox { display: none; }
 
-    .card  { background:#1b1b1b; border:1px solid #2a2a2a; border-radius: 16px; padding: 20px; height: 100%; box-sizing: border-box; }
-    .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; max-width: 800px; margin-left: auto; margin-right: auto; }
+    .card { background:#1b1b1b; border:1px solid #2a2a2a; border-radius: 16px; padding: 20px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; max-width: 850px; margin-left: auto; margin-right: auto; }
     .counter { font-size: 18px; opacity: .9; }
-    .status  { font-size: 14px; opacity: .75; color: #2b6cff; font-weight: bold; }
+    .status { font-size: 14px; opacity: .75; color: #2b6cff; font-weight: bold; }
 
-    /* 패널 레이아웃 가로 정렬 강화 */
-    .panel { display:grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; max-width: 850px; margin: 0 auto; }
-    .small { font-size: 13px; opacity: .75; }
+    .panel { display:grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: stretch; max-width: 850px; margin: 0 auto; }
 
-    /* ===== Frame + Overlay (사이즈 축소 및 화질 최적화) ===== */
+    /* ===== Frame + Overlay ===== */
     .playerFrame {
       position: relative;
       width: 100%;
-      max-width: 340px; /* 크기를 줄여 화질 개선 */
+      max-width: 320px;
       margin: 0 auto;
       border-radius: 28px; 
       overflow: hidden;
       background: #111;
       box-shadow: 0 8px 30px rgba(0,0,0,0.6);
 
-      /* 좌표 미세 조정 */
       --art-left: 10.0%;
       --art-top: 14.2%;
       --art-size: 80%;
-      
       --play-left: 50%;
-      --play-top: 82.2%;
+      --play-top: 89.2%;
     }
 
     .frameImg { width: 100%; height: auto; display:block; user-select:none; pointer-events: none; image-rendering: -webkit-optimize-contrast; }
@@ -55,7 +50,6 @@
       background: #000;
       z-index: 1;
     }
-
     .albumSlot img { position: absolute; top: 0; left: 0; width:100%; height:100%; object-fit:cover; display:block; }
 
     .playOverlay {
@@ -63,41 +57,29 @@
       left: var(--play-left);
       top: var(--play-top);
       transform: translate(-50%, -50%);
-      width: 60px;
-      height: 60px;
-      border: 0;
-      border-radius: 50%; 
+      width: 60px; height: 60px;
+      border: 0; border-radius: 50%; 
       background: rgba(255, 255, 255, 0); 
-      color: transparent; 
-      cursor: pointer;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 12px;
+      color: transparent; cursor: pointer;
+      z-index: 10; display: flex; align-items: center; justify-content: center;
       transition: all 0.3s;
     }
-    
-    /* 마우스를 올리면 버튼 위치를 알려줌 */
-    .playOverlay:hover {
-      background: rgba(255, 255, 255, 0.2); /* 살짝 밝아짐 */
-      color: #fff; /* 'Play' 글자가 보임 */
-      text-shadow: 0 0 5px rgba(0,0,0,0.5);
-    }
-
+    .playOverlay:hover { background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 12px; }
     .playOverlay:active { transform: translate(-50%, -50%) scale(0.92); background: rgba(0, 0, 0, 0.1); }
 
-    .controls { display:flex; gap: 12px; align-items:center; margin-top: 18px; justify-content:center; }
-    .btn { border:0; border-radius:12px; padding:14px 20px; font-size:15px; font-weight:bold; cursor:pointer; transition: 0.2s; }
+    .controls { margin-top: auto; padding-top: 20px; }
+    .btn { border:0; border-radius:12px; padding:16px 20px; font-size:16px; font-weight:bold; cursor:pointer; transition: 0.2s; }
     .btn-primary { background:#2b6cff; color:#fff; width: 100%; }
     .btn:disabled { background:#333; color:#666; cursor:not-allowed; }
 
-    /* Sliders 디자인 개선 */
-    .sl { margin: 15px 0 25px; }
-    .sl label { display:flex; justify-content:space-between; align-items:center; font-size:15px; margin-bottom: 12px; }
-    input[type="range"] { width:100%; cursor: pointer; height: 6px; border-radius: 5px; background: #333; accent-color: #2b6cff; }
-    .value { font-family: monospace; font-size: 18px; color: #2b6cff; font-weight: bold; }
+    /* Sliders */
+    .sl { margin-bottom: 35px; }
+    .sl label { display:flex; justify-content:space-between; align-items:center; font-size:16px; margin-bottom: 12px; font-weight: bold; }
+    input[type="range"] { width:100%; cursor: pointer; height: 6px; border-radius: 5px; background: #333; accent-color: #2b6cff; margin: 10px 0; }
+    .value { font-family: monospace; font-size: 18px; color: #2b6cff; }
+
+    /* Slider Labels (0, 100 아래 문구) */
+    .sl-guide { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.6; margin-top: -5px; }
 
     .screen { display:none; }
     .screen.active { display:block; animation: fadeIn 0.4s; }
@@ -105,15 +87,13 @@
 
     @media (max-width: 800px){
       .panel { grid-template-columns: 1fr; }
-      .playerFrame { max-width: 320px; }
+      .playerFrame { max-width: 300px; }
     }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <div class="debugBox" id="debugBox">DEBUG\nInitializing...</div>
-
     <div class="screen active" id="screenStart">
       <div class="card" style="max-width: 500px; margin: 40px auto;">
         <h2 style="margin-top:0; color:#2b6cff;">연구 참가 안내</h2>
@@ -129,8 +109,8 @@
       <div class="card" style="max-width: 500px; margin: 40px auto;">
         <h2 style="margin-top:0;">실험 방법</h2>
         <p>1. <b>하단 중앙의 재생 버튼</b>을 누르면 음악이 <b>10초</b>간 재생됩니다.</p>
-        <p>2. </b>이 음악이 표현하고 있다고 생각되는 감정</b>을 우측 슬라이더로 평가해주세요.</p>
-        <p>3. 재생이 끝나면 <b>[다음 곡으로]</b> 버튼이 활성화됩니다.</p>
+        <p>2. 이 음악이 표현하고 있다고 생각되는 감정을 우측 슬라이더로 평가해주세요.</p>
+        <p>3. 평가를 마친 후 <b>[다음 곡으로]</b> 버튼을 눌러주세요.</p>
         <button class="btn btn-primary" id="btnGo">이해했습니다</button>
       </div>
     </div>
@@ -142,7 +122,7 @@
       </div>
 
       <div class="panel">
-        <div class="card">
+        <div class="card" style="align-items: center; justify-content: center;">
           <div class="playerFrame">
             <img class="frameImg" id="frameImg" src="stimuli/music_player.png" alt="player frame" />
             <div class="albumSlot">
@@ -151,24 +131,29 @@
             <button class="playOverlay" id="playBtn">Play</button>
             <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
           </div>
-          <div class="controls">
-            <button class="btn btn-primary" id="nextBtn" disabled>다음 곡으로</button>
-          </div>
         </div>
 
         <div class="card">
           <div class="sl">
             <label><span>Valence (정서가)</span><span class="value" id="valTxt">50</span></label>
             <input id="valence" type="range" min="0" max="100" step="1" value="50" />
+            <div class="sl-guide">
+              <span>매우 부정적인</span>
+              <span>매우 긍정적인</span>
+            </div>
           </div>
+
           <div class="sl">
             <label><span>Arousal (각성도)</span><span class="value" id="aroTxt">50</span></label>
             <input id="arousal" type="range" min="0" max="100" step="1" value="50" />
+            <div class="sl-guide">
+              <span>매우 이완된, 차분한</span>
+              <span>매우 각성된, 강렬한</span>
+            </div>
           </div>
-          <div style="background:#222; padding:15px; border-radius:10px; font-size: 0.85em; line-height: 1.6; color:#bbb;">
-            <b>도움말</b><br>
-            • Valence: 매우 부정적인(0) ~ 매우 긍정적인(100)<br>
-            • Arousal: 매우 이완된,차분한(0) ~ 매우 각성된,강렬한(100)
+
+          <div class="controls">
+            <button class="btn btn-primary" id="nextBtn" disabled>다음 곡으로</button>
           </div>
         </div>
       </div>
@@ -184,7 +169,7 @@
   </div>
 
 <script>
-/* 기존 스크립트 로직 유지 */
+/* 기존 로직 동일 유지 */
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRK8Ii1JMouDxNxZb7xA9jljphbq_AnT3Ho_tCeyjxF_aO057b6kXNTE6XNL59Za44/exec";
 const PLAY_MS = 10000;
 const DEFAULT_ART = "stimuli/no_album.jpg";
