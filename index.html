@@ -63,16 +63,27 @@
       left: var(--play-left);
       top: var(--play-top);
       transform: translate(-50%, -50%);
-      width: 50px; /* 플레이어가 작아진 만큼 버튼도 조정 */
-      height: 50px;
+      width: 60px;
+      height: 60px;
       border: 0;
       border-radius: 50%; 
       background: rgba(255, 255, 255, 0); 
       color: transparent; 
       cursor: pointer;
       z-index: 10;
-      outline: none;
-      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 12px;
+      transition: all 0.3s;
+    }
+    
+    /* 마우스를 올리면 버튼 위치를 알려줌 */
+    .playOverlay:hover {
+      background: rgba(255, 255, 255, 0.2); /* 살짝 밝아짐 */
+      color: #fff; /* 'Play' 글자가 보임 */
+      text-shadow: 0 0 5px rgba(0,0,0,0.5);
     }
 
     .playOverlay:active { transform: translate(-50%, -50%) scale(0.92); background: rgba(0, 0, 0, 0.1); }
