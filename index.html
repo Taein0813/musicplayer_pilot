@@ -3,65 +3,76 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>musicplayer_pilot</title>
+  <title>Music Perception Study</title>
 
   <style>
     body { margin:0; background:#111; color:#eee; font-family: system-ui, -apple-system, Arial, sans-serif; }
     .wrap { max-width: 980px; margin: 0 auto; padding: 16px 24px 24px; }
 
-    /* DEBUG */
-    .debugBox{
+    /* DEBUG - 참가자에게 보이지 않도록 숨김 처리 */
+    .debugBox {
+      display: none; /* 실제 실험 시 숨김, 확인 필요 시 block으로 변경 */
       background:#0d1b2a;
       border:1px solid #1b3a57;
       border-radius:12px;
       padding:10px 12px;
       margin: 10px 0 14px;
       font-size: 12.5px;
-      line-height: 1.35;
       color:#cfe7ff;
       white-space: pre-wrap;
-      word-break: break-word;
     }
 
     .card  { background:#1b1b1b; border:1px solid #2a2a2a; border-radius: 16px; padding: 18px; }
     .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
     .counter { font-size: 18px; opacity: .9; }
-    .status  { font-size: 14px; opacity: .75; }
+    .status  { font-size: 14px; opacity: .75; color: #2b6cff; font-weight: bold; }
 
     .panel { display:grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
     .small { font-size: 13px; opacity: .75; }
 
-    /* ===== Frame + overlay ===== */
+    /* ===== Frame + Overlay (앨범아트 위치 교정) ===== */
     .playerFrame {
       position: relative;
       width: 100%;
-      max-width: 560px;
+      max-width: 500px;
       margin: 0 auto;
-      border-radius: 18px;
+      border-radius: 24px;
       overflow: hidden;
       background: #000;
-      border: 1px solid #2a2a2a;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 
-      /* ★ 여기 3개 조절하면 앨범아트 위치/크기 정확히 맞음 */
-      --art-left: 12.5%;
-      --art-top: 12.0%;
-      --art-size: 76.0%;
-
+      /* 앨범아트 위치 미세 조정 (제공해주신 이미지 비율에 맞춤) */
+      --art-left: 10%;
+      --art-top: 10%;
+      --art-size: 80%;
+      
       --play-left: 50%;
-      --play-top: 82%;
+      --play-top: 85%;
     }
-    .frameImg { width: 100%; height: auto; display:block; user-select:none; -webkit-user-drag:none; }
+    .frameImg { width: 100%; height: auto; display:block; user-select:none; pointer-events: none; }
+    
     .albumSlot {
       position: absolute;
       left: var(--art-left);
       top: var(--art-top);
       width: var(--art-size);
-      height: var(--art-size);
-      border-radius: 10px;
+      height: 0;
+      padding-bottom: var(--art-size); /* 1:1 비율 유지 */
+      border-radius: 12px;
       overflow: hidden;
-      background: #000;
+      background: #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    .albumSlot img { width:100%; height:100%; object-fit:cover; display:block; }
+    .albumSlot img { 
+      position: absolute;
+      top: 0; left: 0;
+      width:100%; height:100%; 
+      object-fit:cover; 
+      display:block; 
+    }
+
     .playOverlay {
       position: absolute;
       left: var(--play-left);
@@ -69,69 +80,67 @@
       transform: translate(-50%, -50%);
       border: 0;
       border-radius: 999px;
-      padding: 12px 18px;
+      padding: 10px 24px;
       font-size: 16px;
+      font-weight: bold;
       cursor: pointer;
-      background: rgba(255,255,255,0.92);
-      color: #111;
-      min-width: 100px;
-      backdrop-filter: blur(4px);
+      background: rgba(255,255,255,1);
+      color: #000;
+      min-width: 120px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: transform 0.1s;
     }
+    .playOverlay:active { transform: translate(-50%, -50%) scale(0.95); }
 
-    .controls { display:flex; gap: 12px; align-items:center; margin-top: 14px; justify-content:center; flex-wrap:wrap; }
-    .btn { border:0; border-radius:999px; padding:12px 16px; font-size:16px; cursor:pointer; }
-    .btn-primary { background:#2b6cff; color:#fff; min-width: 90px; }
-    .btn-white { background:#fff; color:#111; min-width: 110px; }
-    .btn:disabled { opacity:.45; cursor:not-allowed; }
+    .controls { display:flex; gap: 12px; align-items:center; margin-top: 20px; justify-content:center; }
+    .btn { border:0; border-radius:12px; padding:14px 24px; font-size:16px; font-weight:bold; cursor:pointer; transition: 0.2s; }
+    .btn-primary { background:#2b6cff; color:#fff; width: 100%; }
+    .btn-primary:hover { background: #1a56e0; }
+    .btn:disabled { background:#444; color:#888; cursor:not-allowed; }
 
-    .hint { margin-top: 10px; font-size: 13px; opacity:.7; line-height: 1.4; text-align:center; }
+    /* Sliders */
+    .sl { margin: 20px 0 30px; }
+    .sl label { display:flex; justify-content:space-between; align-items:center; font-size:16px; margin-bottom: 12px; font-weight: 500; }
+    input[type="range"] { width:100%; cursor: pointer; }
+    .value { font-family: monospace; font-size: 18px; color: #2b6cff; }
 
-    /* sliders */
-    .sl { margin: 10px 0 18px; }
-    .sl label { display:flex; justify-content:space-between; align-items:center; font-size:15px; margin-bottom: 8px; }
-    input[type="range"] { width:100%; }
-    .value { font-variant-numeric: tabular-nums; opacity:.9; }
-
-    /* screens */
     .screen { display:none; }
-    .screen.active { display:block; }
+    .screen.active { display:block; animation: fadeIn 0.4s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     @media (max-width: 860px){
       .panel { grid-template-columns: 1fr; }
-      .playerFrame { max-width: 420px; }
+      .playerFrame { max-width: 380px; }
     }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <div class="debugBox" id="debugBox">DEBUG\nLoading…</div>
+    <div class="debugBox" id="debugBox">DEBUG\nInitializing...</div>
 
-    <!-- START -->
     <div class="screen active" id="screenStart">
       <div class="card">
-        <h2 style="margin-top:0;">참가자 정보</h2>
-        <p>ID/이름을 입력하고 시작하세요.</p>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-          <input id="pid" type="text" placeholder="예: P001" style="padding:10px 12px;border-radius:10px;border:1px solid #333;background:#111;color:#eee;min-width:220px;">
-          <button class="btn btn-primary" id="btnStart">Start</button>
+        <h2 style="margin-top:0;">연구 참가 안내</h2>
+        <p>참가자 ID 또는 성함을 입력하고 시작해주세요.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 10px;">
+          <input id="pid" type="text" placeholder="ID 입력 (예: P01)" style="padding:14px; border-radius:10px; border:1px solid #333; background:#222; color:#eee; flex:1;">
+          <button class="btn btn-primary" id="btnStart" style="width:auto;">실험 시작</button>
         </div>
-        <p class="small">※ 입력한 ID와 함께 Google Sheet로 저장됩니다.</p>
+        <p class="small">※ 모든 데이터는 연구 목적으로만 사용되며 안전하게 저장됩니다.</p>
       </div>
     </div>
 
-    <!-- INSTRUCTIONS -->
     <div class="screen" id="screenInst">
       <div class="card">
-        <h2 style="margin-top:0;">안내</h2>
-        <p>각 트라이얼에서 <b>Play</b>를 누르면 음악이 <b>10초</b> 재생됩니다.</p>
-        <p>재생이 끝나면 Valence/Arousal(0–100)을 평가하고 <b>Next</b>를 누르세요.</p>
-        <p class="small">브라우저 정책상 자동재생은 불가능해서 Play 클릭이 필요합니다.</p>
-        <button class="btn btn-primary" id="btnGo">Go</button>
+        <h2 style="margin-top:0;">실험 방법</h2>
+        <p>1. <b>Play</b> 버튼을 누르면 음악이 <b>10초</b>간 재생됩니다.</p>
+        <p>2. 음악을 들으면서 느껴지는 감정(Valence, Arousal)을 아래 슬라이더로 평가해주세요.</p>
+        <p>3. 재생이 끝나면 <b>Next</b> 버튼이 활성화됩니다.</p>
+        <button class="btn btn-primary" id="btnGo">이해했습니다</button>
       </div>
     </div>
 
-    <!-- TRIAL -->
     <div class="screen" id="screenTrial">
       <div class="topbar">
         <div class="counter" id="counter">1/16</div>
@@ -141,57 +150,51 @@
       <div class="panel">
         <div class="card">
           <div class="playerFrame">
-            <img class="frameImg" id="frameImg" src="" alt="player frame" />
+            <img class="frameImg" id="frameImg" src="stimuli/music_player.png" alt="player frame" />
             <div class="albumSlot">
               <img id="artImg" src="" alt="album art"/>
             </div>
-            <button class="playOverlay btn-white" id="playBtn">Play</button>
-
+            <button class="playOverlay" id="playBtn">Play</button>
             <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
           </div>
-
           <div class="controls">
-            <button class="btn btn-primary" id="nextBtn" disabled>Next</button>
+            <button class="btn btn-primary" id="nextBtn" disabled>Next Trial</button>
           </div>
-
-          <div class="hint" id="hint">
-            • Play를 누르면 10초 재생 후 자동으로 멈춥니다.<br/>
-            • 재생이 1회 이상 완료되어야 Next가 활성화됩니다.
-          </div>
-          <div class="hint small" id="netHint"></div>
         </div>
 
         <div class="card">
           <div class="sl">
-            <label><span>Valence (0–100)</span><span class="value" id="valTxt">50</span></label>
+            <label><span>Valence (부정 - 긍정)</span><span class="value" id="valTxt">50</span></label>
             <input id="valence" type="range" min="0" max="100" step="1" value="50" />
           </div>
           <div class="sl">
-            <label><span>Arousal (0–100)</span><span class="value" id="aroTxt">50</span></label>
+            <label><span>Arousal (차분 - 흥분)</span><span class="value" id="aroTxt">50</span></label>
             <input id="arousal" type="range" min="0" max="100" step="1" value="50" />
+          </div>
+          <div style="opacity: 0.6; font-size: 0.9em; line-height: 1.5;">
+            * Valence: 불쾌함(0) ~ 즐거움(100)<br>
+            * Arousal: 차분함(0) ~ 격앙됨(100)
           </div>
         </div>
       </div>
     </div>
 
-    <!-- END -->
     <div class="screen" id="screenEnd">
       <div class="card" style="text-align:center;">
-        <h2 style="margin-top:0;">끝!</h2>
-        <p>마지막으로 미전송 데이터가 있으면 재전송을 시도했습니다.</p>
-        <button class="btn btn-primary" id="btnDownload">Download JSON</button>
+        <h2 style="margin-top:0;">실험이 완료되었습니다.</h2>
+        <p>데이터가 성공적으로 전송되었습니다. 참여해주셔서 감사합니다.</p>
+        <p class="small">만약을 대비해 아래 버튼을 눌러 결과 파일을 소지해 주시면 감사하겠습니다.</p>
+        <button class="btn" id="btnDownload" style="background: #333; color: #ccc;">Download JSON (Backup)</button>
       </div>
     </div>
   </div>
 
 <script>
 /** =========================
- * 0) 설정 (너 URL)
+ * 설정 및 데이터 (수정된 URL 적용)
  * ========================= */
-const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbx15kYuTQuzEXWxZnghgcGFXiYIDdUJq_LnQ-iXUmwAUZE5Jpy_gcvBMfqsnhQH4ZNN/exec";
-
-const PLAY_MS = 10_000;
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRK8Ii1JMouDxNxZb7xA9jljphbq_AnT3Ho_tCeyjxF_aO057b6kXNTE6XNL59Za44/exec";
+const PLAY_MS = 10000;
 const FRAME_IMG = "stimuli/music_player.png";
 const DEFAULT_ART = "stimuli/no_album.jpg";
 
@@ -207,306 +210,192 @@ const baseStimuli = [
 ];
 
 /** =========================
- * 1) DEBUG
+ * 데이터 전송 및 큐 관리
  * ========================= */
-const dbgEl = document.getElementById("debugBox");
-let dbgLines = [];
-function dbg(msg){
-  dbgLines.push(msg);
-  if(dbgLines.length > 60) dbgLines = dbgLines.slice(-60);
-  dbgEl.textContent = "DEBUG\n" + dbgLines.join("\n");
-}
-window.addEventListener("error", (e) => dbg("❌ window.error: " + (e.message || e.type)));
-window.addEventListener("unhandledrejection", (e) => dbg("❌ unhandledrejection: " + (e.reason?.message || e.reason)));
-
-/** quick file check */
-async function check(url){
-  try{
-    const r = await fetch(url, { method:"GET", cache:"no-store" });
-    dbg(`${r.ok ? "✅" : "❌"} ${url} (${r.status})`);
-  } catch(e){
-    dbg(`❌ ${url} (ERR)`);
-  }
-}
-(async () => {
-  dbg("🔎 checking key files…");
-  await check(FRAME_IMG);
-  await check(DEFAULT_ART);
-  await check("stimuli/cheerful1.mp3");
-  await check("stimuli/cheerful1.png");
-})();
-
-/** =========================
- * 2) Trials 만들기 + 같은 곡 연속 방지
- * ========================= */
-function buildTrials(){
-  const out=[];
-  for(const s of baseStimuli){
-    out.push({...s, condition:"art", show_art:true});
-    out.push({...s, condition:"noart", show_art:false});
-  }
-  return out;
-}
-function shuffle(arr){
-  const a=[...arr];
-  for(let i=a.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [a[i],a[j]]=[a[j],a[i]];
-  }
-  return a;
-}
-function shuffleNoAdjacentSame(arr, key="stim_id", maxTry=5000){
-  for(let t=0;t<maxTry;t++){
-    const cand = shuffle(arr);
-    let ok=true;
-    for(let i=1;i<cand.length;i++){
-      if(cand[i][key]===cand[i-1][key]) { ok=false; break; }
-    }
-    if(ok) return cand;
-  }
-  return arr;
-}
-
-const trials = shuffleNoAdjacentSame(buildTrials(), "stim_id");
-
-/** =========================
- * 3) Google Sheet 전송 (POST -> 실패시 GET fallback)
- * ========================= */
-const QUEUE_KEY = "unsent_responses_v2";
+const QUEUE_KEY = "exp_fallback_queue";
 function loadQueue(){ try { return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); } catch { return []; } }
 function saveQueue(q){ localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
 
-async function sendPOST(payload){
-  const res = await fetch(GOOGLE_SCRIPT_URL, {
-    method:"POST",
-    mode:"cors",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(payload),
-  });
-  const text = await res.text();
-  if(!res.ok) throw new Error(`POST ${res.status}: ${text}`);
-  return text;
-}
-
-// doGet만 있는 스크립트도 많아서 GET도 같이 지원
-async function sendGET(payload){
-  const url = new URL(GOOGLE_SCRIPT_URL);
-  Object.entries(payload).forEach(([k,v]) => url.searchParams.set(k, String(v)));
-  // CORS 회피용: no-cors로 보내면 응답은 못 읽지만 전송은 됨(서버가 허용하면)
-  await fetch(url.toString(), { method:"GET", mode:"no-cors" });
-  return "GET sent (no-cors)";
-}
-
 async function sendToSheet(payload){
-  try{
-    const r = await sendPOST(payload);
-    return { ok:true, via:"POST", resp:r };
-  } catch(e){
-    dbg("⚠️ POST failed -> try GET: " + (e.message||e));
-    try{
-      const r2 = await sendGET(payload);
-      return { ok:true, via:"GET", resp:r2 };
-    } catch(e2){
-      return { ok:false, via:"NONE", resp:(e2.message||e2) };
-    }
+  try {
+    const res = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "text/plain" }, // CORS 프리플라이트 방지를 위해 text/plain 사용 가능
+      body: JSON.stringify(payload),
+    });
+    return { ok: res.ok };
+  } catch (e) {
+    return { ok: false, error: e };
   }
 }
 
 async function flushQueue(){
   const q = loadQueue();
-  if(!q.length) return { sent:0, left:0 };
-  dbg(`📦 queue flush start: ${q.length}`);
-  const remain=[];
-  let sent=0;
+  if(!q.length) return;
+  const remain = [];
   for(const item of q){
     const r = await sendToSheet(item);
-    if(r.ok) sent++; else remain.push(item);
+    if(!r.ok) remain.push(item);
   }
   saveQueue(remain);
-  dbg(`📦 queue flush done: sent=${sent}, left=${remain.length}`);
-  return { sent, left:remain.length };
 }
 
 /** =========================
- * 4) 화면 제어
+ * 실험 로직
  * ========================= */
+function buildTrials(){
+  const out=[];
+  baseStimuli.forEach(s => {
+    out.push({...s, condition:"art", show_art:true});
+    out.push({...s, condition:"noart", show_art:false});
+  });
+  return out;
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1; i>0; i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+// 동일 자극 연속 방지 셔플
+function getSmartShuffle(arr){
+  let result = shuffle([...arr]);
+  for(let i=1; i<result.length; i++){
+    if(result[i].stim_id === result[i-1].stim_id){
+      return getSmartShuffle(arr); // 재시도
+    }
+  }
+  return result;
+}
+
+const trials = getSmartShuffle(buildTrials());
+let participant_id = "";
+let trialIndex = 0;
+const results = [];
+let playedOnce = false;
+let timer = null;
+
 const S = {
   start: document.getElementById("screenStart"),
   inst: document.getElementById("screenInst"),
   trial: document.getElementById("screenTrial"),
   end: document.getElementById("screenEnd"),
 };
+
 function show(screen){
   Object.values(S).forEach(el => el.classList.remove("active"));
   screen.classList.add("active");
 }
 
-let participant_id = "";
-let trialIndex = 0;
-const results = [];
-
-document.getElementById("btnStart").addEventListener("click", async () => {
-  const pid = (document.getElementById("pid").value || "").trim();
-  if(!pid){ alert("ID/이름을 입력해줘."); return; }
-  participant_id = pid;
-  dbg("👤 participant_id=" + participant_id);
-  try { await flushQueue(); } catch {}
-  show(S.inst);
-});
-
-document.getElementById("btnGo").addEventListener("click", () => {
-  trialIndex = 0;
-  loadTrial(trialIndex);
-  show(S.trial);
-});
-
-/** =========================
- * 5) Trial 동작
- * ========================= */
-const counterEl = document.getElementById("counter");
-const statusEl  = document.getElementById("status");
-const hintEl    = document.getElementById("hint");
-const netHintEl = document.getElementById("netHint");
-
-const frameImg = document.getElementById("frameImg");
-const artImg   = document.getElementById("artImg");
-const audioEl  = document.getElementById("audio");
-const playBtn  = document.getElementById("playBtn");
-const nextBtn  = document.getElementById("nextBtn");
-
-const valenceEl = document.getElementById("valence");
-const arousalEl = document.getElementById("arousal");
-const valTxt = document.getElementById("valTxt");
-const aroTxt = document.getElementById("aroTxt");
-
-function syncSlider(){
-  valTxt.textContent = valenceEl.value;
-  aroTxt.textContent = arousalEl.value;
-}
-valenceEl.addEventListener("input", syncSlider);
-arousalEl.addEventListener("input", syncSlider);
-
-let timer = null;
-let playedOnce = false;
-
 function loadTrial(i){
   const t = trials[i];
-  counterEl.textContent = `${i+1}/${trials.length}`;
-  statusEl.textContent = "준비됨";
-  netHintEl.textContent = "";
-  hintEl.innerHTML = "• Play를 누르면 10초 재생 후 자동으로 멈춥니다.<br/>• 재생이 1회 이상 완료되어야 Next가 활성화됩니다.";
+  document.getElementById("counter").textContent = `${i+1} / ${trials.length}`;
+  document.getElementById("status").textContent = "준비됨";
+  document.getElementById("artImg").src = t.show_art ? t.art : DEFAULT_ART;
+  
+  const audio = document.getElementById("audio");
+  audio.src = t.audio;
+  audio.load();
 
-  frameImg.src = FRAME_IMG;
-  artImg.src = t.show_art ? t.art : DEFAULT_ART;
-
-  // reset audio
-  if(timer) clearTimeout(timer);
-  timer = null;
   playedOnce = false;
-  nextBtn.disabled = true;
-  playBtn.textContent = "Play";
-  try { audioEl.pause(); audioEl.currentTime = 0; } catch {}
-  audioEl.src = t.audio;
-  audioEl.load();
-
-  // reset sliders
-  valenceEl.value = 50;
-  arousalEl.value = 50;
-  syncSlider();
-
-  dbg(`🎧 trial ${i+1}: ${t.stim_id} / ${t.condition}`);
+  document.getElementById("nextBtn").disabled = true;
+  document.getElementById("playBtn").textContent = "Play";
+  
+  // 슬라이더 초기화
+  document.getElementById("valence").value = 50;
+  document.getElementById("arousal").value = 50;
+  updateSliderText();
 }
 
-function enableNext(){
-  playedOnce = true;
-  nextBtn.disabled = false;
-  hintEl.textContent = "이제 Next를 누를 수 있습니다.";
+function updateSliderText(){
+  document.getElementById("valTxt").textContent = document.getElementById("valence").value;
+  document.getElementById("aroTxt").textContent = document.getElementById("arousal").value;
 }
 
-playBtn.addEventListener("click", async () => {
-  try{
-    if(audioEl.paused){
-      await audioEl.play();
-      statusEl.textContent = "재생 중 (10초)";
-      playBtn.textContent = "Pause";
+document.getElementById("valence").oninput = updateSliderText;
+document.getElementById("arousal").oninput = updateSliderText;
 
+document.getElementById("btnStart").onclick = () => {
+  participant_id = document.getElementById("pid").value.trim();
+  if(!participant_id) return alert("ID를 입력해주세요.");
+  show(S.inst);
+};
+
+document.getElementById("btnGo").onclick = () => {
+  loadTrial(0);
+  show(S.trial);
+};
+
+document.getElementById("playBtn").onclick = async () => {
+  const audio = document.getElementById("audio");
+  const btn = document.getElementById("playBtn");
+  const status = document.getElementById("status");
+
+  if(audio.paused){
+    try {
+      await audio.play();
+      btn.textContent = "Pause";
+      status.textContent = "재생 중...";
+      
       if(timer) clearTimeout(timer);
       timer = setTimeout(() => {
-        try { audioEl.pause(); audioEl.currentTime = 0; } catch {}
-        statusEl.textContent = "재생 완료";
-        playBtn.textContent = "Play";
-        enableNext();
+        audio.pause();
+        audio.currentTime = 0;
+        btn.textContent = "Play";
+        status.textContent = "재생 완료";
+        playedOnce = true;
+        document.getElementById("nextBtn").disabled = false;
       }, PLAY_MS);
-    } else {
-      audioEl.pause();
-      statusEl.textContent = "일시정지";
-      playBtn.textContent = "Play";
-    }
-  } catch(e){
-    dbg("❌ audio play error: " + (e.message||e));
-    statusEl.textContent = "재생 실패(호스팅/파일 확인)";
+    } catch(e) { alert("오디오 재생에 실패했습니다. 파일을 확인해주세요."); }
+  } else {
+    audio.pause();
+    btn.textContent = "Play";
+    status.textContent = "일시정지";
   }
-});
+};
 
-nextBtn.addEventListener("click", async () => {
+document.getElementById("nextBtn").onclick = async () => {
   const t = trials[trialIndex];
-
-  if(timer) clearTimeout(timer);
-  timer = null;
-  try { audioEl.pause(); audioEl.currentTime = 0; } catch {}
-
   const payload = {
-    participant_id,
-    trial_index: trialIndex + 1,
-    total_trials: trials.length,
-    stim_id: t.stim_id,
-    condition: t.condition,
-    audio: t.audio,
-    art_shown: (t.show_art ? t.art : DEFAULT_ART),
-    valence: Number(valenceEl.value),
-    arousal: Number(arousalEl.value),
-    played_once: playedOnce,
-    client_timestamp: new Date().toISOString(),
-    user_agent: navigator.userAgent
+    pid: participant_id,
+    trial: trialIndex + 1,
+    stim: t.stim_id,
+    cond: t.condition,
+    val: document.getElementById("valence").value,
+    aro: document.getElementById("arousal").value,
+    time: new Date().toLocaleString()
   };
 
   results.push(payload);
+  
+  // 즉시 전송 시도
+  const res = await sendToSheet(payload);
+  if(!res.ok){
+    const q = loadQueue();
+    q.push(payload);
+    saveQueue(q);
+  }
 
-  netHintEl.textContent = "저장 중…";
-  const r = await sendToSheet(payload);
-  if(r.ok){
-    netHintEl.textContent = `✅ 저장 완료 (${r.via})`;
-    dbg(`✅ sent (${r.via}) trial ${trialIndex+1}`);
-    // 혹시 이전 큐가 남아있으면 한번 더 flush
-    try { await flushQueue(); } catch {}
+  trialIndex++;
+  if(trialIndex < trials.length){
+    loadTrial(trialIndex);
   } else {
-    const q = loadQueue(); q.push(payload); saveQueue(q);
-    netHintEl.textContent = "⚠️ 전송 실패 → 임시 저장(나중에 재전송)";
-    dbg("⚠️ send failed queued: " + r.resp);
-  }
-
-  trialIndex += 1;
-  if(trialIndex >= trials.length){
-    dbg("🏁 end reached. flushing queue…");
-    try { await flushQueue(); } catch {}
+    await flushQueue();
     show(S.end);
-    return;
   }
-  loadTrial(trialIndex);
-});
+};
 
-document.getElementById("btnDownload").addEventListener("click", () => {
+document.getElementById("btnDownload").onclick = () => {
   const blob = new Blob([JSON.stringify(results, null, 2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = "va_data.json";
+  a.href = URL.createObjectURL(blob);
+  a.download = `results_${participant_id}.json`;
   a.click();
-  URL.revokeObjectURL(url);
-});
-
-/** init */
-dbg("✅ vanilla experiment loaded (no jsPsych).");
+};
 </script>
 </body>
 </html>
