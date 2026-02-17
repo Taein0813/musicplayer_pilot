@@ -34,11 +34,11 @@
 
       /* 좌표 미세 조정 */
       --art-left: 10.4%;
-      --art-top: 20.0%;
+      --art-top: 14.0%;
       --art-size: 79.2%;
       
       --play-left: 50%;
-      --play-top: 70.2%;
+      --play-top: 80.2%;
     }
 
     .frameImg { width: 100%; height: auto; display:block; user-select:none; pointer-events: none; image-rendering: -webkit-optimize-contrast; }
@@ -129,7 +129,7 @@
       <div class="card" style="max-width: 500px; margin: 40px auto;">
         <h2 style="margin-top:0;">실험 방법</h2>
         <p>1. <b>하단 중앙의 재생 버튼</b>을 누르면 음악이 <b>10초</b>간 재생됩니다.</p>
-        <p>2. 음악을 들으며 느껴지는 정서 상태를 우측 슬라이더로 평가해주세요.</p>
+        <p>2. 이 음악이 표현하고 있다고 생각되는 감정을 우측 슬라이더로 평가해주세요.</p>
         <p>3. 재생이 끝나면 <b>Next Trial</b> 버튼이 활성화됩니다.</p>
         <button class="btn btn-primary" id="btnGo">이해했습니다</button>
       </div>
@@ -158,17 +158,17 @@
 
         <div class="card">
           <div class="sl">
-            <label><span>Valence (부정 - 긍정)</span><span class="value" id="valTxt">50</span></label>
+            <label><span>Valence (정서가)</span><span class="value" id="valTxt">50</span></label>
             <input id="valence" type="range" min="0" max="100" step="1" value="50" />
           </div>
           <div class="sl">
-            <label><span>Arousal (차분 - 흥분)</span><span class="value" id="aroTxt">50</span></label>
+            <label><span>Arousal (각성도)</span><span class="value" id="aroTxt">50</span></label>
             <input id="arousal" type="range" min="0" max="100" step="1" value="50" />
           </div>
           <div style="background:#222; padding:15px; border-radius:10px; font-size: 0.85em; line-height: 1.6; color:#bbb;">
             <b>도움말</b><br>
-            • Valence: 불쾌함/슬픔(0) ~ 즐거움/행복(100)<br>
-            • Arousal: 매우 차분함(0) ~ 매우 각성됨/강렬함(100)
+            • Valence: 매우 부정적인(0) ~ 매우 긍정적인(100)<br>
+            • Arousal: 매우 이완된,차분한(0) ~ 매우 각성된,강렬한(100)
           </div>
         </div>
       </div>
