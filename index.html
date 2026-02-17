@@ -30,88 +30,78 @@
     .panel { display:grid; grid-template-columns: 1.1fr .9fr; gap: 18px; }
     .small { font-size: 13px; opacity: .75; }
 
-    /* ===== Frame + Overlay (앨범아트 위치 교정) ===== */
-    .playerFrame {
-      position: relative;
-      width: 100%;
-      max-width: 500px;
-      margin: 0 auto;
-      border-radius: 24px;
-      overflow: hidden;
-      background: #000;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+   /* ===== Frame + Overlay (이미지에 딱 맞게 교정) ===== */
+.playerFrame {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  border-radius: 30px; /* 프레임 곡률 조정 */
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 
-      /* 앨범아트 위치 미세 조정 (제공해주신 이미지 비율에 맞춤) */
-      --art-left: 10%;
-      --art-top: 20%;
-      --art-size: 80%;
-      
-      --play-left: 50%;
-      --play-top: 85%;
-    }
-    .frameImg { width: 100%; height: auto; display:block; user-select:none; pointer-events: none; }
-    
-    .albumSlot {
-      position: absolute;
-      left: var(--art-left);
-      top: var(--art-top);
-      width: var(--art-size);
-      height: 0;
-      padding-bottom: var(--art-size); /* 1:1 비율 유지 */
-      border-radius: 12px;
-      overflow: hidden;
-      background: #222;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .albumSlot img { 
-      position: absolute;
-      top: 0; left: 0;
-      width:100%; height:100%; 
-      object-fit:cover; 
-      display:block; 
-    }
+  /* 이미지 좌표 미세 조정 */
+  --art-left: 10.5%;
+  --art-top: 11.8%;
+  --art-size: 79%;
+  
+  --play-left: 50%;
+  --play-top: 89.5%; /* 하단 재생 버튼 위치 */
+}
 
-    .playOverlay {
-      position: absolute;
-      left: var(--play-left);
-      top: var(--play-top);
-      transform: translate(-50%, -50%);
-      border: 0;
-      border-radius: 999px;
-      padding: 10px 24px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      background: rgba(255,255,255,1);
-      color: #000;
-      min-width: 120px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      transition: transform 0.1s;
-    }
-    .playOverlay:active { transform: translate(-50%, -50%) scale(0.95); }
+.frameImg { width: 100%; height: auto; display:block; user-select:none; pointer-events: none; }
 
-    .controls { display:flex; gap: 12px; align-items:center; margin-top: 20px; justify-content:center; }
-    .btn { border:0; border-radius:12px; padding:14px 24px; font-size:16px; font-weight:bold; cursor:pointer; transition: 0.2s; }
-    .btn-primary { background:#2b6cff; color:#fff; width: 100%; }
-    .btn-primary:hover { background: #1a56e0; }
-    .btn:disabled { background:#444; color:#888; cursor:not-allowed; }
+.albumSlot {
+  position: absolute;
+  left: var(--art-left);
+  top: var(--art-top);
+  width: var(--art-size);
+  height: 0;
+  padding-bottom: var(--art-size); /* 1:1 정사각 유지 */
+  border-radius: 8px; /* 앨범아트 살짝 둥글게 */
+  overflow: hidden;
+  background: #222;
+  z-index: 1;
+}
 
-    /* Sliders */
-    .sl { margin: 20px 0 30px; }
-    .sl label { display:flex; justify-content:space-between; align-items:center; font-size:16px; margin-bottom: 12px; font-weight: 500; }
-    input[type="range"] { width:100%; cursor: pointer; }
-    .value { font-family: monospace; font-size: 18px; color: #2b6cff; }
+.albumSlot img { 
+  position: absolute;
+  top: 0; left: 0;
+  width:100%; height:100%; 
+  object-fit:cover; 
+}
 
-    .screen { display:none; }
-    .screen.active { display:block; animation: fadeIn 0.4s; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* Play 버튼을 동그랗게 만들고 이미지 위에 덮기 */
+.playOverlay {
+  position: absolute;
+  left: var(--play-left);
+  top: var(--play-top);
+  transform: translate(-50%, -50%);
+  
+  /* 동그란 버튼 설정 */
+  width: 68px;   /* 이미지 버튼 크기에 맞춰 조절 */
+  height: 68px;
+  border: 0;
+  border-radius: 50%; 
+  
+  /* 시각적 효과 */
+  background: rgba(255, 255, 255, 0); /* 배경을 투명하게 해서 밑의 이미지가 보이게 함 */
+  color: transparent; /* 글자(Play)를 투명하게 숨김 */
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.2s;
+}
 
-    @media (max-width: 860px){
-      .panel { grid-template-columns: 1fr; }
-      .playerFrame { max-width: 380px; }
-    }
+/* 마우스를 올렸을 때만 살짝 표시나게 하고 싶다면 (선택 사항) */
+.playOverlay:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* 재생 중일 때 멈춤 이미지 등이 없으므로, 클릭 영역임을 알기 쉽게 유지 */
+.playOverlay:active {
+  transform: translate(-50%, -50%) scale(0.92);
+}
   </style>
 </head>
 
