@@ -288,21 +288,38 @@ document.getElementById("playBtn").onclick = async () => {
   const audio = document.getElementById("audio");
   const status = document.getElementById("status");
   const playBtn = document.getElementById("playBtn");
+
   try {
+    // 재생 중일 때 버튼을 다시 누르면 처음부터 다시 재생하도록 처리
+    audio.currentTime = 0; 
     await audio.play();
+
     status.textContent = "재생 중 (10초)...";
     playBtn.textContent = "WAIT";
+    
+    // 재생 중에는 중복 클릭 방지를 위해 잠시 비활성화 (선택 사항)
     playBtn.style.pointerEvents = "none";
     playBtn.style.opacity = "0.7";
+
     if(timer) clearTimeout(timer);
+    
     timer = setTimeout(() => {
-      audio.pause(); audio.currentTime = 0;
-      status.textContent = "재생 완료";
+      audio.pause(); 
+      audio.currentTime = 0;
+      status.textContent = "재생 완료 (다시 듣기 가능)";
+      
+      // 핵심: 재생이 끝나면 버튼을 다시 활성화 상태로 되돌림
       playBtn.textContent = "PLAY";
-      playBtn.style.opacity = "1";
+      playBtn.style.pointerEvents = "auto"; // 클릭 가능하게 변경
+      playBtn.style.opacity = "1";         // 불투명도 복구
+      
       document.getElementById("nextBtn").disabled = false;
     }, PLAY_MS);
-  } catch(e) { alert("오디오 재생 실패."); }
+  } catch(e) { 
+    alert("오디오 재생 실패."); 
+    playBtn.style.pointerEvents = "auto";
+    playBtn.style.opacity = "1";
+  }
 };
 
 
